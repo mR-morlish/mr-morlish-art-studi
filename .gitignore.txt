@@ -1,0 +1,15 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor & IDE Settings
+.vscode/
+.idea/
+
+# Environment Variables & Keys
+.env
+*.log
+
+# Dependencies (if added later)
+node_modules/
