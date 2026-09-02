@@ -1,6 +1,3 @@
-Here is your complete **`index.html`** code with all your exact social links, Formspree contact form endpoint, and phone numbers configured:
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -449,8 +446,7 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
       </select>
     </div>
 
-    <div class="pinterest-grid" id="pinterest-grid">
-      </div>
+    <div class="pinterest-grid" id="pinterest-grid"></div>
 
     <div class="contact-card">
       <h3><i class="fa-solid fa-envelope"></i> Send Message to mR_morlish</h3>
@@ -490,13 +486,26 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
   </div>
 
   <script>
-    let portfolioData = JSON.parse(localStorage.getItem("portfolioData")) || [
-      { id: 1, title: "mR_morlish Modern Lines", image: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=600", category: "Digital Art" },
-      { id: 2, title: "Sunset Canvas", image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=600", category: "Painting" },
-      { id: 3, title: "Minimal Portrait Study", image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600", category: "Sketch" },
-      { id: 4, title: "Vibrant Wave", image: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=600", category: "Digital Art" },
-      { id: 5, title: "Classic Texture", image: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600", category: "Painting" }
+    // List your local images stored in GitHub's images/ folder here
+    const githubImages = [
+      "images/art1.jpg",
+      "images/art2.jpg",
+      "images/art3.jpg"
     ];
+
+    // Load custom user uploads stored in browser storage
+    let userUploads = JSON.parse(localStorage.getItem("uploadedArtwork")) || [];
+
+    // Combine local repository images and dynamic user uploads
+    function getAllArtwork() {
+      const defaultPins = githubImages.map((src, index) => ({
+        id: "repo-" + index,
+        title: "Artwork " + (index + 1),
+        image: src,
+        category: "Digital Art"
+      }));
+      return [...userUploads, ...defaultPins];
+    }
 
     function hideSplash() {
       const splash = document.getElementById("splash-screen");
@@ -507,7 +516,7 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
     }
 
     setTimeout(hideSplash, 1500);
-    window.addEventListener("DOMContentLoaded", () => renderGallery(portfolioData));
+    window.addEventListener("DOMContentLoaded", () => renderGallery(getAllArtwork()));
     window.addEventListener("load", hideSplash);
 
     function toggleTheme() {
@@ -525,20 +534,7 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
     function openUploadModal() { document.getElementById("upload-modal").style.display = "flex"; }
     function closeUploadModal() { document.getElementById("upload-modal").style.display = "none"; }
 
-    async function classifyImage(imgElement) {
-      try {
-        if (typeof mobilenet !== "undefined") {
-          const model = await mobilenet.load();
-          const predictions = await model.classify(imgElement);
-          return predictions.length > 0 ? predictions[0].className.split(',')[0] : "Art";
-        }
-        return "Digital Art";
-      } catch (error) {
-        return "Digital Art";
-      }
-    }
-
-    async function handleUpload(event) {
+    function handleUpload(event) {
       event.preventDefault();
       const title = document.getElementById("art-title").value;
       const fileInput = document.getElementById("art-file");
@@ -548,30 +544,22 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
 
       const reader = new FileReader();
       reader.onload = function (e) {
-        saveArtworkEntry(title, e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
+        // Convert file into a usable image data string automatically
+        const newArt = {
+          id: Date.now(),
+          title: title,
+          image: e.target.result,
+          category: "Digital Art"
+        };
 
-    function saveArtworkEntry(title, imageUrl) {
-      const tempImg = new Image();
-      tempImg.crossOrigin = "anonymous";
-      tempImg.src = imageUrl;
+        userUploads.unshift(newArt);
+        localStorage.setItem("uploadedArtwork", JSON.stringify(userUploads));
 
-      tempImg.onload = async function () {
-        const category = await classifyImage(tempImg);
-
-        const newArt = { id: Date.now(), title, image: imageUrl, category };
-        portfolioData.unshift(newArt);
-
-        try {
-          localStorage.setItem("portfolioData", JSON.stringify(portfolioData));
-        } catch (err) {}
-
-        renderGallery(portfolioData);
+        renderGallery(getAllArtwork());
         closeUploadModal();
         document.getElementById("upload-form").reset();
       };
+      reader.readAsDataURL(file);
     }
 
     function renderGallery(items) {
@@ -596,7 +584,7 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
               <span class="pin-title">${item.title}</span>
               <div class="pin-icons">
                 <div class="pin-icon-btn" onclick="toggleLike(this)"><i class="fa-regular fa-heart"></i></div>
-                <a href="${item.image}" download class="pin-icon-btn"><i class="fa-solid fa-download"></i></a>
+                <a href="${item.image}" download="${item.title}.jpg" class="pin-icon-btn"><i class="fa-solid fa-download"></i></a>
               </div>
             </div>
           </div>
@@ -609,7 +597,1251 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
       const query = document.getElementById("search-bar").value.toLowerCase();
       const selectedCategory = document.getElementById("category-filter").value;
 
-      const filtered = portfolioData.filter(item => {
+      const filtered = getAllArtwork().filter(item => {
+        const matchesTitle = item.title.toLowerCase().includes(query);
+        const matchesCat = selectedCategory === "all" || item.category.toLowerCase().includes(selectedCategory.toLowerCase());
+        return matchesTitle && matchesCat;
+      });
+
+      renderGallery(filtered);
+    }
+
+    function toggleLike(element) {
+      const icon = element.querySelector("i");
+      if (icon.classList.contains("fa-regular")) {
+        icon.classList.remove("fa-regular");
+        icon.classList.add("fa-solid", "fa-heart");
+        icon.style.color = "#e60023";
+      } else {
+        icon.classList.remove("fa-solid", "fa-heart");
+        icon.classList.add("fa-regular");
+        icon.style.color = "#111";
+      }
+    }
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mR_morlish Art studio | Portfolio</title>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
+  <style>
+    :root {
+      --bg-color: #0f0f11;
+      --card-bg: #1a1a1e;
+      --text-color: #e4e4e7;
+      --text-heading: #ffffff;
+      --accent-color: #e60023; /* Pinterest Red Accent */
+      --accent-hover: #ad081b;
+      --border-color: #27272a;
+      --input-bg: #27272a;
+    }
+
+    [data-theme="light"] {
+      --bg-color: #ffffff;
+      --card-bg: #f4f4f5;
+      --text-color: #27272a;
+      --text-heading: #09090b;
+      --accent-color: #e60023;
+      --accent-hover: #ad081b;
+      --border-color: #e4e4e7;
+      --input-bg: #e4e4e7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
+    }
+
+    /* Splash Screen */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    .splash-logo {
+      width: 70px;
+      height: 70px;
+      color: var(--accent-color);
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    /* Header / Navbar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background-color: var(--bg-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--accent-color);
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .search-bar-nav {
+      flex: 1;
+      max-width: 500px;
+      margin: 0 1.5rem;
+    }
+
+    .search-bar-nav input {
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      border-radius: 24px;
+      border: none;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    /* Social Links Bar */
+    .header-socials {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-right: 1.5rem;
+    }
+
+    .header-socials a {
+      color: var(--text-color);
+      font-size: 1.2rem;
+      text-decoration: none;
+    }
+
+    .header-socials a:hover {
+      color: var(--accent-color);
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      color: var(--text-color);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .main-container {
+      padding: 1.5rem 2rem;
+    }
+
+    /* Profile Header Box */
+    .profile-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .profile-info h2 {
+      color: var(--text-heading);
+      font-size: 1.6rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .phone-text {
+      font-weight: 600;
+      color: var(--accent-color);
+      margin-top: 0.3rem;
+    }
+
+    .social-link-list {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.8rem;
+    }
+
+    .social-link-list a {
+      color: var(--text-color);
+      font-size: 1.3rem;
+      text-decoration: none;
+    }
+
+    .social-link-list a:hover {
+      color: var(--accent-color);
+    }
+
+    /* Action Controls Bar */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .upload-btn {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 24px;
+      cursor: pointer;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .upload-btn:hover {
+      background-color: var(--accent-hover);
+    }
+
+    select.category-select {
+      padding: 0.6rem 1.2rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-color);
+      font-weight: 600;
+      outline: none;
+    }
+
+    /* Pinterest Masonry Grid Layout */
+    .pinterest-grid {
+      column-count: 5;
+      column-gap: 1.25rem;
+      width: 100%;
+    }
+
+    @media (max-width: 1400px) { .pinterest-grid { column-count: 4; } }
+    @media (max-width: 1100px) { .pinterest-grid { column-count: 3; } }
+    @media (max-width: 768px) { .pinterest-grid { column-count: 2; } }
+    @media (max-width: 480px) { .pinterest-grid { column-count: 1; } }
+
+    .pin-card {
+      break-inside: avoid;
+      margin-bottom: 1.25rem;
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--card-bg);
+      cursor: pointer;
+    }
+
+    .pin-card img {
+      width: 100%;
+      display: block;
+      border-radius: 16px;
+      object-fit: cover;
+    }
+
+    .pin-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1rem;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+      border-radius: 16px;
+    }
+
+    .pin-card:hover .pin-overlay {
+      opacity: 1;
+    }
+
+    .pin-top-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .save-badge {
+      background-color: var(--accent-color);
+      color: white;
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .pin-bottom-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+
+    .pin-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70%;
+    }
+
+    .pin-icons {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .pin-icon-btn {
+      background: rgba(255, 255, 255, 0.85);
+      color: #111;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    .pin-icon-btn:hover {
+      background: #ffffff;
+      transform: scale(1.05);
+    }
+
+    /* Contact Section */
+    .contact-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-top: 3rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .contact-card h3 {
+      color: var(--text-heading);
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+
+    /* Modals */
+    #upload-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 450px;
+      border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="splash-screen">
+    <i class="fa-solid fa-palette splash-logo"></i>
+    <p style="margin-top: 1rem; font-weight: 700; letter-spacing: 0.5px;">Welcome to mR_morlish Art studio...</p>
+  </div>
+
+  <header>
+    <div class="nav-brand">
+      <i class="fa-solid fa-palette"></i>
+      <span>mR_morlish Art studio</span>
+    </div>
+    
+    <div class="search-bar-nav">
+      <input type="text" id="search-bar" placeholder="Search mR_morlish creations..." oninput="filterGallery()" />
+    </div>
+
+    <div class="header-socials">
+      <a href="https://www.instagram.com/mr_morlish?igsi=MXd1bWI5d3FucnZ5dw%3D%3D&utm_source=qr" target="_blank" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+      <a href="https://x.com/de_morlish?s=11" target="_blank" title="X (Twitter)"><i class="fa-brands fa-x-twitter"></i></a>
+      <a href="https://wa.me/message/I4GE2G57WMTOB1" target="_blank" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+      <a href="tel:0535044433" title="Call Us"><i class="fa-solid fa-phone"></i></a>
+    </div>
+
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()">
+      <i class="fa-solid fa-moon"></i> Dark
+    </button>
+  </header>
+
+  <div class="main-container">
+    
+    <div class="profile-card">
+      <div class="profile-info">
+        <h2>mR_morlish Art Studio</h2>
+        <p>Explore creative visual concepts, original artwork, and design studies.</p>
+        <p class="phone-text"><i class="fa-solid fa-phone"></i> Contact: 0535044433</p>
+        <div class="social-link-list">
+          <a href="https://www.instagram.com/mr_morlish?igsi=MXd1bWI5d3FucnZ5dw%3D%3D&utm_source=qr" target="_blank" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+          <a href="https://x.com/de_morlish?s=11" target="_blank" title="X (Twitter)"><i class="fa-brands fa-x-twitter"></i></a>
+          <a href="https://wa.me/message/I4GE2G57WMTOB1" target="_blank" title="WhatsApp Message"><i class="fa-brands fa-whatsapp"></i></a>
+          <a href="tel:0535044433" title="Call Directly"><i class="fa-solid fa-phone"></i></a>
+        </div>
+      </div>
+      <button class="upload-btn" onclick="openUploadModal()">
+        <i class="fa-solid fa-plus"></i> Add Pin to Studio
+      </button>
+    </div>
+
+    <div class="action-bar">
+      <select id="category-filter" class="category-select" onchange="filterGallery()">
+        <option value="all">All Categories</option>
+        <option value="Painting">Painting</option>
+        <option value="Sketch">Sketch / Drawing</option>
+        <option value="Digital Art">Digital Art</option>
+      </select>
+    </div>
+
+    <div class="pinterest-grid" id="pinterest-grid"></div>
+
+    <div class="contact-card">
+      <h3><i class="fa-solid fa-envelope"></i> Send Message to mR_morlish</h3>
+      <form action="https://formspree.io/f/mrpgppzd" method="POST">
+        <div class="form-group">
+          <label>Your Email</label>
+          <input type="email" name="email" placeholder="name@example.com" required />
+        </div>
+        <div class="form-group">
+          <label>Your Message</label>
+          <textarea name="message" rows="4" placeholder="Type your project inquiry or commission details here..." required></textarea>
+        </div>
+        <button type="submit" class="upload-btn" style="width:100%; justify-content:center;">Send Message</button>
+      </form>
+    </div>
+
+  </div>
+
+  <div id="upload-modal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
+        <h3 style="color: var(--text-heading);">mR_morlish Art Studio Upload</h3>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; font-size:1.2rem;" onclick="closeUploadModal()"></i>
+      </div>
+      <form id="upload-form" onsubmit="handleUpload(event)">
+        <div style="margin-bottom:1.2rem;">
+          <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Artwork Title</label>
+          <input type="text" id="art-title" placeholder="Add a title" style="width:100%; padding:0.75rem; border-radius:10px; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-color);" required />
+        </div>
+        <div style="margin-bottom:1.5rem;">
+          <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Image File</label>
+          <input type="file" id="art-file" accept="image/*" style="width:100%; padding:0.5rem; border-radius:10px; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-color);" required />
+        </div>
+        <button type="submit" class="upload-btn" style="width:100%; justify-content:center;">Save to Gallery</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // List your local images stored in GitHub's images/ folder here
+    const githubImages = [
+      "images/art1.jpg",
+      "images/art2.jpg",
+      "images/art3.jpg"
+    ];
+
+    // Load custom user uploads stored in browser storage
+    let userUploads = JSON.parse(localStorage.getItem("uploadedArtwork")) || [];
+
+    // Combine local repository images and dynamic user uploads
+    function getAllArtwork() {
+      const defaultPins = githubImages.map((src, index) => ({
+        id: "repo-" + index,
+        title: "Artwork " + (index + 1),
+        image: src,
+        category: "Digital Art"
+      }));
+      return [...userUploads, ...defaultPins];
+    }
+
+    function hideSplash() {
+      const splash = document.getElementById("splash-screen");
+      if (splash && splash.style.display !== "none") {
+        splash.style.opacity = "0";
+        setTimeout(() => splash.style.display = "none", 500);
+      }
+    }
+
+    setTimeout(hideSplash, 1500);
+    window.addEventListener("DOMContentLoaded", () => renderGallery(getAllArtwork()));
+    window.addEventListener("load", hideSplash);
+
+    function toggleTheme() {
+      const body = document.body;
+      const themeBtn = document.getElementById("theme-btn");
+      if (body.getAttribute("data-theme") === "light") {
+        body.removeAttribute("data-theme");
+        themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i> Dark';
+      } else {
+        body.setAttribute("data-theme", "light");
+        themeBtn.innerHTML = '<i class="fa-solid fa-sun"></i> Light';
+      }
+    }
+
+    function openUploadModal() { document.getElementById("upload-modal").style.display = "flex"; }
+    function closeUploadModal() { document.getElementById("upload-modal").style.display = "none"; }
+
+    function handleUpload(event) {
+      event.preventDefault();
+      const title = document.getElementById("art-title").value;
+      const fileInput = document.getElementById("art-file");
+      const file = fileInput.files[0];
+
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        // Convert file into a usable image data string automatically
+        const newArt = {
+          id: Date.now(),
+          title: title,
+          image: e.target.result,
+          category: "Digital Art"
+        };
+
+        userUploads.unshift(newArt);
+        localStorage.setItem("uploadedArtwork", JSON.stringify(userUploads));
+
+        renderGallery(getAllArtwork());
+        closeUploadModal();
+        document.getElementById("upload-form").reset();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderGallery(items) {
+      const grid = document.getElementById("pinterest-grid");
+      grid.innerHTML = "";
+
+      if (items.length === 0) {
+        grid.innerHTML = "<p>No matching pins found in mR_morlish Art studio.</p>";
+        return;
+      }
+
+      items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "pin-card";
+        card.innerHTML = `
+          <img src="${item.image}" alt="${item.title}" />
+          <div class="pin-overlay">
+            <div class="pin-top-actions">
+              <span class="save-badge">Save</span>
+            </div>
+            <div class="pin-bottom-actions">
+              <span class="pin-title">${item.title}</span>
+              <div class="pin-icons">
+                <div class="pin-icon-btn" onclick="toggleLike(this)"><i class="fa-regular fa-heart"></i></div>
+                <a href="${item.image}" download="${item.title}.jpg" class="pin-icon-btn"><i class="fa-solid fa-download"></i></a>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterGallery() {
+      const query = document.getElementById("search-bar").value.toLowerCase();
+      const selectedCategory = document.getElementById("category-filter").value;
+
+      const filtered = getAllArtwork().filter(item => {
+        const matchesTitle = item.title.toLowerCase().includes(query);
+        const matchesCat = selectedCategory === "all" || item.category.toLowerCase().includes(selectedCategory.toLowerCase());
+        return matchesTitle && matchesCat;
+      });
+
+      renderGallery(filtered);
+    }
+
+    function toggleLike(element) {
+      const icon = element.querySelector("i");
+      if (icon.classList.contains("fa-regular")) {
+        icon.classList.remove("fa-regular");
+        icon.classList.add("fa-solid", "fa-heart");
+        icon.style.color = "#e60023";
+      } else {
+        icon.classList.remove("fa-solid", "fa-heart");
+        icon.classList.add("fa-regular");
+        icon.style.color = "#111";
+      }
+    }
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mR_morlish Art studio | Portfolio</title>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
+  <style>
+    :root {
+      --bg-color: #0f0f11;
+      --card-bg: #1a1a1e;
+      --text-color: #e4e4e7;
+      --text-heading: #ffffff;
+      --accent-color: #e60023; /* Pinterest Red Accent */
+      --accent-hover: #ad081b;
+      --border-color: #27272a;
+      --input-bg: #27272a;
+    }
+
+    [data-theme="light"] {
+      --bg-color: #ffffff;
+      --card-bg: #f4f4f5;
+      --text-color: #27272a;
+      --text-heading: #09090b;
+      --accent-color: #e60023;
+      --accent-hover: #ad081b;
+      --border-color: #e4e4e7;
+      --input-bg: #e4e4e7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      line-height: 1.5;
+    }
+
+    /* Splash Screen */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    .splash-logo {
+      width: 70px;
+      height: 70px;
+      color: var(--accent-color);
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    /* Header / Navbar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      background-color: var(--bg-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--accent-color);
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .search-bar-nav {
+      flex: 1;
+      max-width: 500px;
+      margin: 0 1.5rem;
+    }
+
+    .search-bar-nav input {
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      border-radius: 24px;
+      border: none;
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    /* Social Links Bar */
+    .header-socials {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-right: 1.5rem;
+    }
+
+    .header-socials a {
+      color: var(--text-color);
+      font-size: 1.2rem;
+      text-decoration: none;
+    }
+
+    .header-socials a:hover {
+      color: var(--accent-color);
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      color: var(--text-color);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .main-container {
+      padding: 1.5rem 2rem;
+    }
+
+    /* Profile Header Box */
+    .profile-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .profile-info h2 {
+      color: var(--text-heading);
+      font-size: 1.6rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .phone-text {
+      font-weight: 600;
+      color: var(--accent-color);
+      margin-top: 0.3rem;
+    }
+
+    .social-link-list {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.8rem;
+    }
+
+    .social-link-list a {
+      color: var(--text-color);
+      font-size: 1.3rem;
+      text-decoration: none;
+    }
+
+    .social-link-list a:hover {
+      color: var(--accent-color);
+    }
+
+    /* Action Controls Bar */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .upload-btn {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 24px;
+      cursor: pointer;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .upload-btn:hover {
+      background-color: var(--accent-hover);
+    }
+
+    select.category-select {
+      padding: 0.6rem 1.2rem;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-color);
+      font-weight: 600;
+      outline: none;
+    }
+
+    /* Pinterest Masonry Grid Layout */
+    .pinterest-grid {
+      column-count: 5;
+      column-gap: 1.25rem;
+      width: 100%;
+    }
+
+    @media (max-width: 1400px) { .pinterest-grid { column-count: 4; } }
+    @media (max-width: 1100px) { .pinterest-grid { column-count: 3; } }
+    @media (max-width: 768px) { .pinterest-grid { column-count: 2; } }
+    @media (max-width: 480px) { .pinterest-grid { column-count: 1; } }
+
+    .pin-card {
+      break-inside: avoid;
+      margin-bottom: 1.25rem;
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--card-bg);
+      cursor: pointer;
+    }
+
+    .pin-card img {
+      width: 100%;
+      display: block;
+      border-radius: 16px;
+      object-fit: cover;
+    }
+
+    .pin-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1rem;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+      border-radius: 16px;
+    }
+
+    .pin-card:hover .pin-overlay {
+      opacity: 1;
+    }
+
+    .pin-top-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .save-badge {
+      background-color: var(--accent-color);
+      color: white;
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .pin-bottom-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+
+    .pin-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70%;
+    }
+
+    .pin-icons {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .pin-icon-btn {
+      background: rgba(255, 255, 255, 0.85);
+      color: #111;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    .pin-icon-btn:hover {
+      background: #ffffff;
+      transform: scale(1.05);
+    }
+
+    /* Contact Section */
+    .contact-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-top: 3rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .contact-card h3 {
+      color: var(--text-heading);
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+
+    /* Modals */
+    #upload-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 450px;
+      border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="splash-screen">
+    <i class="fa-solid fa-palette splash-logo"></i>
+    <p style="margin-top: 1rem; font-weight: 700; letter-spacing: 0.5px;">Welcome to mR_morlish Art studio...</p>
+  </div>
+
+  <header>
+    <div class="nav-brand">
+      <i class="fa-solid fa-palette"></i>
+      <span>mR_morlish Art studio</span>
+    </div>
+    
+    <div class="search-bar-nav">
+      <input type="text" id="search-bar" placeholder="Search mR_morlish creations..." oninput="filterGallery()" />
+    </div>
+
+    <div class="header-socials">
+      <a href="https://www.instagram.com/mr_morlish?igsi=MXd1bWI5d3FucnZ5dw%3D%3D&utm_source=qr" target="_blank" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+      <a href="https://x.com/de_morlish?s=11" target="_blank" title="X (Twitter)"><i class="fa-brands fa-x-twitter"></i></a>
+      <a href="https://wa.me/message/I4GE2G57WMTOB1" target="_blank" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+      <a href="tel:0535044433" title="Call Us"><i class="fa-solid fa-phone"></i></a>
+    </div>
+
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()">
+      <i class="fa-solid fa-moon"></i> Dark
+    </button>
+  </header>
+
+  <div class="main-container">
+    
+    <div class="profile-card">
+      <div class="profile-info">
+        <h2>mR_morlish Art Studio</h2>
+        <p>Explore creative visual concepts, original artwork, and design studies.</p>
+        <p class="phone-text"><i class="fa-solid fa-phone"></i> Contact: 0535044433</p>
+        <div class="social-link-list">
+          <a href="https://www.instagram.com/mr_morlish?igsi=MXd1bWI5d3FucnZ5dw%3D%3D&utm_source=qr" target="_blank" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+          <a href="https://x.com/de_morlish?s=11" target="_blank" title="X (Twitter)"><i class="fa-brands fa-x-twitter"></i></a>
+          <a href="https://wa.me/message/I4GE2G57WMTOB1" target="_blank" title="WhatsApp Message"><i class="fa-brands fa-whatsapp"></i></a>
+          <a href="tel:0535044433" title="Call Directly"><i class="fa-solid fa-phone"></i></a>
+        </div>
+      </div>
+      <button class="upload-btn" onclick="openUploadModal()">
+        <i class="fa-solid fa-plus"></i> Add Pin to Studio
+      </button>
+    </div>
+
+    <div class="action-bar">
+      <select id="category-filter" class="category-select" onchange="filterGallery()">
+        <option value="all">All Categories</option>
+        <option value="Painting">Painting</option>
+        <option value="Sketch">Sketch / Drawing</option>
+        <option value="Digital Art">Digital Art</option>
+      </select>
+    </div>
+
+    <div class="pinterest-grid" id="pinterest-grid"></div>
+
+    <div class="contact-card">
+      <h3><i class="fa-solid fa-envelope"></i> Send Message to mR_morlish</h3>
+      <form action="https://formspree.io/f/mrpgppzd" method="POST">
+        <div class="form-group">
+          <label>Your Email</label>
+          <input type="email" name="email" placeholder="name@example.com" required />
+        </div>
+        <div class="form-group">
+          <label>Your Message</label>
+          <textarea name="message" rows="4" placeholder="Type your project inquiry or commission details here..." required></textarea>
+        </div>
+        <button type="submit" class="upload-btn" style="width:100%; justify-content:center;">Send Message</button>
+      </form>
+    </div>
+
+  </div>
+
+  <div id="upload-modal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
+        <h3 style="color: var(--text-heading);">mR_morlish Art Studio Upload</h3>
+        <i class="fa-solid fa-xmark" style="cursor:pointer; font-size:1.2rem;" onclick="closeUploadModal()"></i>
+      </div>
+      <form id="upload-form" onsubmit="handleUpload(event)">
+        <div style="margin-bottom:1.2rem;">
+          <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Artwork Title</label>
+          <input type="text" id="art-title" placeholder="Add a title" style="width:100%; padding:0.75rem; border-radius:10px; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-color);" required />
+        </div>
+        <div style="margin-bottom:1.5rem;">
+          <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Image File</label>
+          <input type="file" id="art-file" accept="image/*" style="width:100%; padding:0.5rem; border-radius:10px; border:1px solid var(--border-color); background:var(--input-bg); color:var(--text-color);" required />
+        </div>
+        <button type="submit" class="upload-btn" style="width:100%; justify-content:center;">Save to Gallery</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // List your local images stored in GitHub's images/ folder here
+    const githubImages = [
+      "images/art1.jpg",
+      "images/art2.jpg",
+      "images/art3.jpg"
+    ];
+
+    // Load custom user uploads stored in browser storage
+    let userUploads = JSON.parse(localStorage.getItem("uploadedArtwork")) || [];
+
+    // Combine local repository images and dynamic user uploads
+    function getAllArtwork() {
+      const defaultPins = githubImages.map((src, index) => ({
+        id: "repo-" + index,
+        title: "Artwork " + (index + 1),
+        image: src,
+        category: "Digital Art"
+      }));
+      return [...userUploads, ...defaultPins];
+    }
+
+    function hideSplash() {
+      const splash = document.getElementById("splash-screen");
+      if (splash && splash.style.display !== "none") {
+        splash.style.opacity = "0";
+        setTimeout(() => splash.style.display = "none", 500);
+      }
+    }
+
+    setTimeout(hideSplash, 1500);
+    window.addEventListener("DOMContentLoaded", () => renderGallery(getAllArtwork()));
+    window.addEventListener("load", hideSplash);
+
+    function toggleTheme() {
+      const body = document.body;
+      const themeBtn = document.getElementById("theme-btn");
+      if (body.getAttribute("data-theme") === "light") {
+        body.removeAttribute("data-theme");
+        themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i> Dark';
+      } else {
+        body.setAttribute("data-theme", "light");
+        themeBtn.innerHTML = '<i class="fa-solid fa-sun"></i> Light';
+      }
+    }
+
+    function openUploadModal() { document.getElementById("upload-modal").style.display = "flex"; }
+    function closeUploadModal() { document.getElementById("upload-modal").style.display = "none"; }
+
+    function handleUpload(event) {
+      event.preventDefault();
+      const title = document.getElementById("art-title").value;
+      const fileInput = document.getElementById("art-file");
+      const file = fileInput.files[0];
+
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        // Convert file into a usable image data string automatically
+        const newArt = {
+          id: Date.now(),
+          title: title,
+          image: e.target.result,
+          category: "Digital Art"
+        };
+
+        userUploads.unshift(newArt);
+        localStorage.setItem("uploadedArtwork", JSON.stringify(userUploads));
+
+        renderGallery(getAllArtwork());
+        closeUploadModal();
+        document.getElementById("upload-form").reset();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderGallery(items) {
+      const grid = document.getElementById("pinterest-grid");
+      grid.innerHTML = "";
+
+      if (items.length === 0) {
+        grid.innerHTML = "<p>No matching pins found in mR_morlish Art studio.</p>";
+        return;
+      }
+
+      items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "pin-card";
+        card.innerHTML = `
+          <img src="${item.image}" alt="${item.title}" />
+          <div class="pin-overlay">
+            <div class="pin-top-actions">
+              <span class="save-badge">Save</span>
+            </div>
+            <div class="pin-bottom-actions">
+              <span class="pin-title">${item.title}</span>
+              <div class="pin-icons">
+                <div class="pin-icon-btn" onclick="toggleLike(this)"><i class="fa-regular fa-heart"></i></div>
+                <a href="${item.image}" download="${item.title}.jpg" class="pin-icon-btn"><i class="fa-solid fa-download"></i></a>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterGallery() {
+      const query = document.getElementById("search-bar").value.toLowerCase();
+      const selectedCategory = document.getElementById("category-filter").value;
+
+      const filtered = getAllArtwork().filter(item => {
         const matchesTitle = item.title.toLowerCase().includes(query);
         const matchesCat = selectedCategory === "all" || item.category.toLowerCase().includes(selectedCategory.toLowerCase());
         return matchesTitle && matchesCat;
@@ -633,5 +1865,3 @@ Here is your complete **`index.html`** code with all your exact social links, Fo
   </script>
 </body>
 </html>
-
-```
